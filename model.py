@@ -37,7 +37,7 @@ class DenseBlock(nn.Module):
     def __init__(self, in_channels, out_channels, activation_type= 'relu', bias=True):
         super().__init__()
 
-        self.linear = nn.linear(in_channels, out_channels, bias=True)
+        self.linear = nn.Linear(in_channels, out_channels, bias=bias)
 
         if activation_type == 'linear':
             self.activate = nn.Identity()
@@ -53,8 +53,55 @@ class DenseBlock(nn.Module):
         Z = self.activate(Z)
         return Z
 
-class NonLinearRankWeight(nn.Module):
-    def __init__(self,)
+class SortedFactorModel(nn.Module):
+    def __init__(self, n_layers,
+                        in_channels,
+                        features,
+                        n_deep_factors,
+                        n_BM_factors,
+                        n_portfolio,
+                        activation_type= 'relu',
+                        bias=True):
         super().__init__()
-    
-    def forward(self, Y):
+        
+        self.DC_network = DeepCharacteristics(n_layers, in_channels, n_deep_factors, features, activation_type, bias)
+        self.beta = nn.Parameter(torch.randn(n_portfolio, n_deep_factors), requires_grad=True)
+        self.gamma = nn.Parameter(torch.randn(n_portfolio, n_BM_factors), requires_grad=True)
+        self.register_parameter(name='gamma', param=self.gamma)
+        self.register_parameter(name='beta', param=self.beta)
+
+    def forward(self, Z, r, g):
+        """
+        Args:
+            Z ([Tensor(MxK)]): firm characteristics
+            r ([Tensor(M)]): firm returns
+            g ([Tensor(D)]): benchmark factors
+        """
+        Y = self.DC_network(Z)
+        print()
+        W = rank_weight(Y) # M x P \ P := n_deep_factors
+        f = torch.matmul(W.transpose(1, 2), r) # P x 1
+        R = torch.matmul(self.beta[None, :], f) + torch.matmul(self.gamma[None, :], g)
+        return R
+
+
+def rank_weight(Y, method="softmax"):
+    """Applies the rank weight operation
+
+    Args:
+        Y      ([Tensor(M x N)])
+        method (string)
+    """
+    eps = 1-6
+    mean = torch.mean(Y, axis=0)
+    var = torch.var(Y, axis=0)
+    normalised_data = (Y - mean) / (var + eps)
+    if method == "softmax":
+        y_p = -50 * torch.exp(-5 * normalised_data)
+        y_n = -50 * torch.exp(5 * normalised_data)
+        softmax = nn.Softmax(dim=1)
+        W = softmax(y_p) - softmax(y_n)
+    if method == "equal_ranks":
+        pass
+        
+    return W
