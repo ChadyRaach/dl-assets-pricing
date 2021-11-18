@@ -67,23 +67,26 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
 
     # Main training loop
     for epoch in tqdm(range(num_epochs)):
-
+        epoch_loss = 0
         # The data loader iterates once over the whole data set
         for (Z, r, g, R) in loader_train:
             # make sure that the models is in train mode
             model.train()
 
             # Apply forward model and compute loss on the batch
-            Z = Z.type(dtype)  # Convert data into pytorch 'variables'
-            R = R.type(dtype)  # for computing the backprop of the loss
+            Z = Z.type(dtype)
+            R = R.type(dtype)
+            r = r.type(dtype)
+            g = g.type(dtype)
             R_pred = model(Z, r, g)
             loss = loss_fn(R_pred, R)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            epoch_loss += loss.item()
 
         # Store loss history to plot it later
-        loss_history.append(loss)
+        loss_history.append(loss/len(loader_train))
         if loader_val is not None:
             valloss = check_accuracy(model, loss_fn, loader_val)
             valloss_history.append(valloss)
@@ -103,7 +106,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
             print('Epoch %5d/%5d, checkpoint saved' % (epoch + 1, num_epochs))
 
         # scheduler update
-        scheduler.step(loss.data)
+        scheduler.step(loss_history[-1].data)
 
     # Save last result
     if filename:
@@ -137,13 +140,13 @@ def check_accuracy(model, loss_fn, dataloader):
     loss = 0
     model.eval()  # set model to evaluation mode
     with torch.no_grad():
-        for (x, y) in dataloader:
-            x_var = x.type(dtype)
-            y_var = y.type(dtype)
-            # apply model to x mini-batch
-            out = model(x_var)
-            # accumulate loss
-            loss += loss_fn(out, y_var)
+        for (Z, r, g, R) in dataloader:
+            Z = Z.type(dtype)
+            R = R.type(dtype)
+            r = r.type(dtype)
+            g = g.type(dtype)
+            R_pred = model(Z, r, g)
+            loss = loss_fn(R_pred, R)
 
     # return loss divided by number of mini-batches
     return loss/len(dataloader)
@@ -164,4 +167,4 @@ if __name__ == "__main__":
 
     dataloader = [[fake_data, r, g, R]]
     trainmodel(network, loss,
-               dataloader, None, None, None, 100, weight_decay=0.1, loss_every=10)
+               dataloader, dataloader, None, None, 100, weight_decay=0.1, loss_every=10)
