@@ -86,7 +86,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
             epoch_loss += loss.item()
 
         # Store loss history to plot it later
-        loss_history.append(loss/len(loader_train))
+        loss_history.append(epoch_loss/len(loader_train))
         if loader_val is not None:
             valloss = check_accuracy(model, loss_fn, loader_val)
             valloss_history.append(valloss)
@@ -106,7 +106,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
             print('Epoch %5d/%5d, checkpoint saved' % (epoch + 1, num_epochs))
 
         # scheduler update
-        scheduler.step(loss_history[-1].data)
+        scheduler.step(loss_history[-1])
 
     # Save last result
     if filename:
@@ -153,18 +153,21 @@ def check_accuracy(model, loss_fn, dataloader):
 
 
 if __name__ == "__main__":
+    from torch.utils.data.dataloader import DataLoader
+    from torch.utils.data import TensorDataset
     T = 100
     M = 3000
-    fake_data = torch.rand(T, M, 52)
-    r = torch.rand(T, M, 1) * 10
-    g = torch.rand(T, 2, 1)
-    R = torch.rand(T, 5, 1)
-    network = SortedFactorModel(5, 52, 32, 10, 2, 5)
+    N = 10
+    fake_data = torch.rand(N, T, M, 52)
+    r = torch.rand(N, T, M, 1) * 10
+    g = torch.rand(N, T, 2, 1)
+    R = torch.rand(N, T, 5, 1)
+    network = SortedFactorModel(5, 52, 32, 10, 2, 5, ranking_method="softmax")
     lambda_ = torch.Tensor([0.1])
 
     def loss(gt_returns, pred_returns):
         return pricing_error(gt_returns, pred_returns) + lambda_ * time_series_variation(gt_returns, pred_returns)
 
-    dataloader = [[fake_data, r, g, R]]
+    dataloader = DataLoader(TensorDataset(fake_data, r, g, R), batch_size=2)
     trainmodel(network, loss,
                dataloader, dataloader, None, None, 100, weight_decay=0.1, loss_every=10)

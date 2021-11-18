@@ -81,8 +81,8 @@ class SortedFactorModel(nn.Module):
         if len(Z.size()) == 2:
             Z = Z[None, :, :]
         Y = self.DC_network(Z)
-        W = rank_weight(Y, method=self.ranking_method)  # T x M x P \ P := n_deep_factors
-        f = torch.matmul(W.transpose(1, 2), r)  # T x P x 1
+        W = rank_weight(Y, method=self.ranking_method)  # N x T x M x P \ P := n_deep_factors
+        f = torch.matmul(W.transpose(2, 3), r)  # N x T x P x 1
         R = torch.matmul(self.beta[None, :], f) + torch.matmul(self.gamma[None, :], g)
         return R
 
@@ -91,7 +91,7 @@ def rank_weight(Y, method="softmax"):
     """Applies the rank weight operation
 
     Args:
-        Y      ([Tensor(T x M x N)])
+        Y      ([Tensor(T x M x P)])
         method (string)
     """
     eps = 1 - 6
@@ -105,14 +105,16 @@ def rank_weight(Y, method="softmax"):
         W = softmax(y_p) - softmax(y_n)
     elif method == "equal_ranks":
         pass
-        M, P = Y.size()[-2], Y.size()[-1]
+        N, T, M, P = Y.size()
         uniform_weight = 1 / (M // 3)
-        sorted, indices = torch.sort(Y, dim=1)
+        _, indices = torch.sort(Y, dim=1)
         W = torch.zeros(Y.size())
-        for i in range(P):
-            W[indices.T[i][2 * M // 3:], i] = uniform_weight
-            W[indices.T[i][M // 3: 2 * M // 3], i] = 0
-            W[indices.T[i][: M // 3], i] = -uniform_weight
+        for n in range(N):
+            for t in range(T):
+                for i in range(P):
+                    W[n, t, indices[n, t, 2 * M // 3:, i], i] = uniform_weight
+                    W[n, t, indices[n, t, M // 3: 2 * M // 3, i], i] = 0
+                    W[n, t, indices[n, t, : M // 3, i], i] = -uniform_weight
     else:
         warnings.warn(f"{method} not implemented yet. Softmax ranking will be applied.")
         return rank_weight(Y, method="softmax")
