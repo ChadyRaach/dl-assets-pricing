@@ -95,19 +95,19 @@ def rank_weight(Y, method="softmax"):
         method (string)
     """
     eps = 1 - 6
-    mean = torch.mean(Y, axis=1)
-    var = torch.var(Y, axis=1)
-    normalised_data = (Y - mean[:, None, :]) / (var[:, None, :] + eps)
+    mean = torch.mean(Y, axis=2)
+    var = torch.var(Y, axis=2)
+    normalised_data = (Y - mean[:, :, None, :]) / (var[:, :, None, :] + eps)
     if method == "softmax":
         y_p = -50 * torch.exp(-5 * normalised_data)
         y_n = -50 * torch.exp(5 * normalised_data)
-        softmax = nn.Softmax(dim=2)
+        softmax = nn.Softmax(dim=3)
         W = softmax(y_p) - softmax(y_n)
     elif method == "equal_ranks":
         pass
         N, T, M, P = Y.size()
         uniform_weight = 1 / (M // 3)
-        _, indices = torch.sort(Y, dim=1)
+        _, indices = torch.sort(Y, dim=2)
         W = torch.zeros(Y.size())
         for n in range(N):
             for t in range(T):
