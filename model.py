@@ -118,14 +118,3 @@ def rank_weight(Y, method="softmax"):
         return rank_weight(Y, method="softmax")
 
     return W
-
-
-if __name__ == "__main__":
-    network = SortedFactorModel(2, 52, 32, 10, n_BM_factors=2, n_portfolio=5, ranking_method="softmax")
-    T = 100
-    M = 3000
-    fake_data = torch.rand(T, M, 52)
-    r = torch.rand(T, M, 1) * 10
-    g = torch.rand(T, 2, 1)
-    x = network(fake_data, r, g)
-    print(x.size())
