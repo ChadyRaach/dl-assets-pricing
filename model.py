@@ -104,7 +104,6 @@ def rank_weight(Y, method="softmax"):
         softmax = nn.Softmax(dim=3)
         W = softmax(y_p) - softmax(y_n)
     elif method == "equal_ranks":
-        pass
         N, T, M, P = Y.size()
         uniform_weight = 1 / (M // 3)
         _, indices = torch.sort(Y, dim=2)
