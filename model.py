@@ -34,7 +34,7 @@ class DenseBlock(nn.Module):
         super().__init__()
 
         self.linear = nn.Linear(in_channels, out_channels, bias=bias)
-
+        self.bn = nn.BatchNorm1d(out_channels)
         if activation_type == "linear":
             self.activate = nn.Identity()
         elif activation_type == "relu":
@@ -45,9 +45,13 @@ class DenseBlock(nn.Module):
             raise NotImplementedError(f"Not implemented activation function: " f"`{activation_type}`!")
 
     def forward(self, Z):
+
         Z = self.linear(Z)
         Z = self.activate(Z)
-        return Z
+        N, M, K = Z.shape
+        Z = Z.view(N * M, K)
+        Z = self.bn(Z)
+        return Z.view(N, M, K)
 
 
 class SortedFactorModel(nn.Module):
@@ -81,10 +85,14 @@ class SortedFactorModel(nn.Module):
         if len(Z.size()) == 2:
             Z = Z[None, :, :]
         Y = self.DC_network(Z)
-        W = rank_weight(Y, method=self.ranking_method)  # N x T x M x P \ P := n_deep_factors
-        f = torch.matmul(W.transpose(2, 3), r)  # N x T x P x 1
-        R = torch.matmul(self.beta[None, :], f) + torch.matmul(self.gamma[None, :], g)
-        return R
+        W = rank_weight(Y, method=self.ranking_method)  # T x M x P \ P := n_deep_factors
+
+        f = torch.matmul(W.transpose(1, 2), r.unsqueeze(dim=-1)).squeeze(dim=-1)  # T x P
+
+        R = torch.matmul(self.beta, f.transpose(0, 1))
+        R += torch.matmul(self.gamma, g.transpose(0, 1))
+        R = R.transpose(0, 1)
+        return R, f
 
 
 def rank_weight(Y, method="softmax"):
@@ -95,26 +103,25 @@ def rank_weight(Y, method="softmax"):
         method (string)
     """
     eps = 1 - 6
-    mean = torch.mean(Y, axis=2)
-    var = torch.var(Y, axis=2)
-    normalised_data = (Y - mean[:, :, None, :]) / (var[:, :, None, :] + eps)
+    mean = torch.mean(Y, axis=1)
+    var = torch.var(Y, axis=1)
+
+    normalised_data = (Y - mean[:, None, :]) / (var[:, None, :] + eps)
     if method == "softmax":
         y_p = -50 * torch.exp(-5 * normalised_data)
         y_n = -50 * torch.exp(5 * normalised_data)
-        softmax = nn.Softmax(dim=3)
+        softmax = nn.Softmax(dim=1)
         W = softmax(y_p) - softmax(y_n)
     elif method == "equal_ranks":
-        pass
-        N, T, M, P = Y.size()
+        T, M, P = Y.size()
         uniform_weight = 1 / (M // 3)
         _, indices = torch.sort(Y, dim=2)
         W = torch.zeros(Y.size())
-        for n in range(N):
-            for t in range(T):
-                for i in range(P):
-                    W[n, t, indices[n, t, 2 * M // 3:, i], i] = uniform_weight
-                    W[n, t, indices[n, t, M // 3: 2 * M // 3, i], i] = 0
-                    W[n, t, indices[n, t, : M // 3, i], i] = -uniform_weight
+        for t in range(T):
+            for i in range(P):
+                W[t, indices[t, 2 * M // 3:, i], i] = uniform_weight
+                W[t, indices[t, M // 3: 2 * M // 3, i], i] = 0
+                W[t, indices[t, : M // 3, i], i] = -uniform_weight
     else:
         warnings.warn(f"{method} not implemented yet. Softmax ranking will be applied.")
         return rank_weight(Y, method="softmax")
