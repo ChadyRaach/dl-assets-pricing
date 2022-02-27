@@ -57,8 +57,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
         valloss = check_accuracy(model, loss_fn, loader_val)
         message = ', val_loss = %.6f' % valloss.item()
 
-    print('Epoch %5d/%5d, ' % (0, num_epochs) +
-          'loss = %.4f%s' % (-1, message))
+    print('Epoch %5d/%5d, ' % (0, num_epochs) + 'loss = %.4f%s' % (-1, message))
 
     # Save initial results
     # if filename:
@@ -101,7 +100,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
         # Save partial results
         if filename and ((epoch + 1) % save_every == 0):
             torch.save([model, optimizer, loss_history, valloss_history],
-                       filename+'%04d.pt' % (epoch + 1))
+                       filename + '%04d.pt' % (epoch + 1))
             print('Epoch %5d/%5d, checkpoint saved' % (epoch + 1, num_epochs))
 
         # scheduler update
