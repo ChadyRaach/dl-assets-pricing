@@ -12,6 +12,21 @@ def next_month(date: dt.datetime) -> dt.datetime:
     return date.replace(day=1)
 
 
+def previous_month(date: dt.datetime) -> dt.datetime:
+
+    date = date.replace(day=1)
+    date = date - dt.timedelta(days=27)
+    return date.replace(day=1)
+
+
+def previous_x_month(date: dt.datetime, x: int) -> dt.datetime:
+
+    date = date.replace(day=1)
+    for _ in range(x):
+        date = previous_month(date)
+    return date
+
+
 def last_day_of_month(any_day):
     # this will never fail
     # get close to the end of the month for any day, and add 4 days 'over'
@@ -64,7 +79,7 @@ def train_val_split(ds, split_size=0.8):
                         ds[:start_val][2],
                         ds[:start_val][3])
     print(
-        f'Validation data on time range: {dt.datetime.strftime((ds.end_date - dt.timedelta(days=30*val_size)).replace(day=1), "%Y-%m-%d")} to {dt.datetime.strftime(last_day_of_month(ds.end_date), "%Y-%m-%d")}')
+        f'Validation data on time range: {dt.datetime.strftime(previous_x_month(ds.end_date, val_size-1), "%Y-%m-%d")} to {dt.datetime.strftime(last_day_of_month(ds.end_date), "%Y-%m-%d")}')
 
     return train_set, val_set
 
