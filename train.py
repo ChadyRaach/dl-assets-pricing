@@ -163,6 +163,7 @@ if __name__ == "__main__":
     fff = pd.read_csv("")
     filename = ""
 
+    FIRM_CHAR_TO_EXTRACT = ["retx", "me", "be"]
     for df in [firm_carac, ff_portfolio, fff]:
         if type(df["date"].iloc[0]) == str:
             df["date"] = df["date"].apply(lambda x: dt.datetime.strptime(x, "%Y-%m-%d"))
@@ -178,7 +179,7 @@ if __name__ == "__main__":
         m_fc = firm_carac[(firm_carac["date"] == current_month) & (firm_carac["is_valid"])
                           ].sort_values("me", ascending=False).iloc[:2300]
         assert len(m_fc) == 2300
-        firm_characteristics.append(m_fc[["retx", "me", "be"]].to_numpy())
+        firm_characteristics.append(m_fc[FIRM_CHAR_TO_EXTRACT].to_numpy())
         firm_returns.append(m_fc["retx"].to_numpy())
         benchmark_factors.append(fff[fff["date"] == current_month][["mktrf", "smb", "hml"]].to_numpy())
         portfolios_returns.append((ff_portfolio[ff_portfolio["date"] == current_month][[

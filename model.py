@@ -71,6 +71,7 @@ class SortedFactorModel(nn.Module):
         self.DC_network = DeepCharacteristics(n_layers, in_channels, n_deep_factors, features, activation_type, bias)
         self.beta = nn.Parameter(torch.randn(n_portfolio, n_deep_factors), requires_grad=True)
         self.gamma = nn.Parameter(torch.randn(n_portfolio, n_BM_factors), requires_grad=True)
+        # self.gamma = nn.Parameter(torch.zeros(n_portfolio, n_BM_factors), requires_grad=False)
         self.register_parameter(name="gamma", param=self.gamma)
         self.register_parameter(name="beta", param=self.beta)
         self.ranking_method = ranking_method
@@ -86,7 +87,6 @@ class SortedFactorModel(nn.Module):
             Z = Z[None, :, :]
         Y = self.DC_network(Z)
         W = rank_weight(Y, method=self.ranking_method)  # T x M x P \ P := n_deep_factors
-
         f = torch.matmul(W.transpose(1, 2), r.unsqueeze(dim=-1)).squeeze(dim=-1)  # T x P
 
         R = torch.matmul(self.beta, f.transpose(0, 1))
@@ -104,9 +104,9 @@ def rank_weight(Y, method="softmax"):
     """
     eps = 1 - 6
     mean = torch.mean(Y, axis=1)
-    var = torch.var(Y, axis=1)
+    std = torch.std(Y, axis=1)
 
-    normalised_data = (Y - mean[:, None, :]) / (var[:, None, :] + eps)
+    normalised_data = (Y - mean[:, None, :]) / (std[:, None, :] + eps)
     if method == "softmax":
         y_p = -50 * torch.exp(-5 * normalised_data)
         y_n = -50 * torch.exp(5 * normalised_data)
