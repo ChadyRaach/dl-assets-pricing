@@ -26,6 +26,7 @@ def compute_CS(R, betas):
 
     _, N = R.shape
     R_i = R.mean(axis=0)
+
     X = np.concatenate([np.ones([N, 1]), betas], axis=1)
 
     Q = minimize(fun=lambda x: (X @ x - R_i).T @ (X @ x - R_i),
@@ -40,6 +41,6 @@ def compute_CS(R, betas):
 
 
 def torch_to_numpy(var):
-    if type(var) == torch.nn.parameter.Parameter:
+    if type(var) == torch.nn.parameter.Parameter or type(var) == torch.Tensor:
         var = var.detach().numpy()
     return var
