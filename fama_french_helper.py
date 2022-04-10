@@ -40,7 +40,8 @@ def ff_returns(
     ptf_list = [ret_col[:-6] for ret_col in ptf_returns_cols]
     ptf_dict = {}
     for i in range(len(ptf_list)):
-        target_cols = ['date', 'dateff', 'year', 'month', ptf_returns_cols[i], 'mktrf', 'smb', 'hml', 'rf']
+        target_cols = list(set(['date', 'dateff', 'year', 'month', ptf_returns_cols[i],
+                           'mktrf', 'smb', 'hml', 'rf']).union(set(factors)))
         ptf_ret_df = merged_data[target_cols]
         ptf_ret_df = ptf_ret_df[(ptf_ret_df['date'] >= start_date) & (ptf_ret_df['date'] <= end_date)]
         ptf_ret_df['ptf_excess_return'] = ptf_ret_df[ptf_returns_cols[i]] - ptf_ret_df['rf']
