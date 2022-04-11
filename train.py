@@ -33,7 +33,7 @@ def trainmodel(model, loss_fn, loader_train, loader_val=None,
     # GPU
     if torch.cuda.is_available():
         model = model.cuda()
-        loss_fn = loss_fn.cuda()
+        loss_fn = loss_fn
         dtype = torch.cuda.FloatTensor
 
     if not(optimizer) or not(scheduler):
@@ -127,12 +127,10 @@ def check_accuracy(model, loss_fn, dataloader):
     Returns:
         - loss over the validation set
     """
-    import torch
-
     dtype = torch.FloatTensor
     if torch.cuda.is_available():
         model = model.cuda()
-        loss_fn = loss_fn.cuda()
+        loss_fn = loss_fn
         dtype = torch.cuda.FloatTensor
 
     loss = 0
@@ -158,9 +156,9 @@ if __name__ == "__main__":
     import datetime as dt
 
     # Load processed file
-    firm_carac = pd.read_csv("")
-    ff_portfolio = pd.read_csv("")
-    fff = pd.read_csv("")
+    firm_carac = pd.read_csv("data/S2000_3300HighestCap.csv")
+    ff_portfolio = pd.read_csv("data/ff_portfolios.csv")
+    fff = pd.read_csv("data/fama_french_factors.csv")
     filename = ""
 
     FIRM_CHAR_TO_EXTRACT = ["retx", "me", "be"]
