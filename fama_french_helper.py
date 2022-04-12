@@ -10,7 +10,11 @@ def process_ff_file(ff_file):
     ff_path = os.path.join(os.getcwd(), ff_file)
     ff_df = pd.read_csv(ff_path, index_col=[0])
     ff_df.dropna(subset=["date"], inplace=True)
-    ff_df['date'] = ff_df['date'].apply(lambda x: dt.datetime.fromisoformat(x))
+    if '/' in ff_df["date"].iloc[0]:
+        str_format =  "%d/%m/%Y"
+    else:
+        str_format =  "%Y-%m-%d"
+    ff_df["date"] = ff_df["date"].apply(lambda x: dt.datetime.strptime(x, str_format))
     ff_df[['year', 'month']] = ff_df[['year', 'month']].astype(int)
     return ff_df
 
@@ -20,7 +24,7 @@ def ff_returns(
         ff_factors_file: str,
         start_date: dt.datetime,
         end_date: dt.datetime,
-        ret_method: str = "ewret",
+        ret_method: str = "vwret",
         factors: list = ['mktrf', 'smb', 'hml']):
     ''''
     Returns Fama French regression coefficients for each portfolio in a given time range for a given portfolios returns file
@@ -40,8 +44,7 @@ def ff_returns(
     ptf_list = [ret_col[:-6] for ret_col in ptf_returns_cols]
     ptf_dict = {}
     for i in range(len(ptf_list)):
-        target_cols = list(set(['date', 'dateff', 'year', 'month', ptf_returns_cols[i],
-                           'mktrf', 'smb', 'hml', 'rf']).union(set(factors)))
+        target_cols = list(set(['date', 'year', 'month', ptf_returns_cols[i], 'rf']).union(set(factors)))
         ptf_ret_df = merged_data[target_cols]
         ptf_ret_df = ptf_ret_df[(ptf_ret_df['date'] >= start_date) & (ptf_ret_df['date'] <= end_date)]
         ptf_ret_df['ptf_excess_return'] = ptf_ret_df[ptf_returns_cols[i]] - ptf_ret_df['rf']
